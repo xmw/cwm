@@ -165,6 +165,7 @@ struct client_ctx {
 	Window			 win;
 	Colormap		 colormap;
 	unsigned int		 bwidth; /* border width */
+	unsigned int		 bwidthmax; /* border width maximized */
 	struct geom		 geom, savegeom, fullgeom;
 	struct {
 		long		 flags;	/* defined hints */
@@ -315,6 +316,8 @@ struct conf {
 	int			 flags;
 #define CONF_BWIDTH			1
 	int			 bwidth;
+#define CONF_BWIDTHMAX			1
+	int			 bwidthmax;
 #define	CONF_MAMOUNT			1
 	int			 mamount;
 #define	CONF_SNAPDIST			0

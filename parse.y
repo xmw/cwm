@@ -70,7 +70,7 @@ typedef struct {
 
 %token	FONTNAME STICKY GAP MOUSEBIND
 %token	AUTOGROUP BIND COMMAND IGNORE
-%token	YES NO BORDERWIDTH MOVEAMOUNT
+%token	YES NO BORDERWIDTH BORDERWIDTHMAX MOVEAMOUNT
 %token	COLOR SNAPDIST AUTOSTART
 %token	ACTIVEBORDER INACTIVEBORDER URGENCYBORDER
 %token	GROUPBORDER UNGROUPBORDER
@@ -123,6 +123,13 @@ main		: FONTNAME STRING		{
 				YYERROR;
 			}
 			conf->bwidth = $2;
+		}
+		| BORDERWIDTHMAX NUMBER {
+			if ($2 < 0 || $2 > UINT_MAX) {
+				yyerror("invalid borderwidthmax: %d", $2);
+				YYERROR;
+			}
+			conf->bwidthmax = $2;
 		}
 		| MOVEAMOUNT NUMBER {
 			if ($2 < 0 || $2 > INT_MAX) {
@@ -284,6 +291,7 @@ lookup(char *s)
 		{ "autostart",		AUTOSTART},
 		{ "bind",		BIND},
 		{ "borderwidth",	BORDERWIDTH},
+		{ "borderwidthmax",	BORDERWIDTHMAX},
 		{ "color",		COLOR},
 		{ "command",		COMMAND},
 		{ "font",		FONTCOLOR},

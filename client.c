@@ -308,8 +308,8 @@ client_maximize(struct client_ctx *cc)
 
 	cc->geom.x = xine.x;
 	cc->geom.y = xine.y;
-	cc->geom.w = xine.w - (cc->bwidth * 2);
-	cc->geom.h = xine.h - (cc->bwidth * 2);
+	cc->geom.w = xine.w - (cc->bwidthmax * 2);
+	cc->geom.h = xine.h - (cc->bwidthmax * 2);
 	cc->flags |= CLIENT_MAXIMIZED;
 
 resize:
@@ -504,6 +504,7 @@ client_draw_border(struct client_ctx *cc)
 {
 	struct screen_ctx	*sc = cc->sc;
 	unsigned long		 pixel;
+	unsigned int		 bwidth;
 
 	if (cc->active)
 		switch (cc->flags & CLIENT_HIGHLIGHT) {
@@ -523,7 +524,12 @@ client_draw_border(struct client_ctx *cc)
 	if (cc->flags & CLIENT_URGENCY)
 		pixel = sc->xftcolor[CWM_COLOR_BORDER_URGENCY].pixel;
 
-	XSetWindowBorderWidth(X_Dpy, cc->win, cc->bwidth);
+	if ((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) {
+		bwidth = cc->bwidthmax;
+	} else {
+		bwidth = cc->bwidth;
+	}
+	XSetWindowBorderWidth(X_Dpy, cc->win, bwidth);
 	XSetWindowBorder(X_Dpy, cc->win, pixel);
 }
 

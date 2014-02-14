@@ -272,6 +272,7 @@ conf_init(struct conf *c)
 	(void)memset(c, 0, sizeof(*c));
 
 	c->bwidth = CONF_BWIDTH;
+	c->bwidthmax = CONF_BWIDTHMAX;
 	c->mamount = CONF_MAMOUNT;
 	c->snapdist = CONF_SNAPDIST;
 
@@ -364,6 +365,7 @@ conf_client(struct client_ctx *cc)
 	}
 
 	cc->bwidth = ignore ? 0 : Conf.bwidth;
+	cc->bwidthmax = ignore ? 0 : Conf.bwidthmax;
 	cc->flags |= ignore ? CLIENT_IGNORE : 0;
 }
 
