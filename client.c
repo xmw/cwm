@@ -297,13 +297,14 @@ client_maximize(struct client_ctx *cc)
 	}
 
 	/*
-	 * pick screen that the middle of the window is on.
+	 * pick screen that the mouse is on.
 	 * that's probably more fair than if just the origin of
 	 * a window is poking over a boundary
 	 */
+	int x, y;
+	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
-	    cc->geom.x + cc->geom.w / 2,
-	    cc->geom.y + cc->geom.h / 2, CWM_GAP);
+	    x, y, CWM_GAP);
 
 	cc->geom.x = xine.x;
 	cc->geom.y = xine.y;
