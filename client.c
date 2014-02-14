@@ -336,9 +336,10 @@ client_vmaximize(struct client_ctx *cc)
 	cc->savegeom.y = cc->geom.y;
 	cc->savegeom.h = cc->geom.h;
 
+	int x, y;
+	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
-	    cc->geom.x + cc->geom.w / 2,
-	    cc->geom.y + cc->geom.h / 2, CWM_GAP);
+	    x, y, CWM_GAP);
 
 	cc->geom.y = xine.y;
 	cc->geom.h = xine.h - (cc->bwidth * 2);
@@ -368,9 +369,10 @@ client_hmaximize(struct client_ctx *cc)
 	cc->savegeom.x = cc->geom.x;
 	cc->savegeom.w = cc->geom.w;
 
+	int x, y;
+	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
-	    cc->geom.x + cc->geom.w / 2,
-	    cc->geom.y + cc->geom.h / 2, CWM_GAP);
+	    x, y, CWM_GAP);
 
 	cc->geom.x = xine.x;
 	cc->geom.w = xine.w - (cc->bwidth * 2);
