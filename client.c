@@ -257,9 +257,10 @@ client_fullscreen(struct client_ctx *cc)
 
 	cc->fullgeom = cc->geom;
 
+	int x, y;
+	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
-	    cc->geom.x + cc->geom.w / 2,
-	    cc->geom.y + cc->geom.h / 2, CWM_NOGAP);
+	    x, y, CWM_NOGAP);
 
 	cc->bwidth = 0;
 	cc->geom = xine;
