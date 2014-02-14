@@ -66,7 +66,7 @@ mousefunc_sweep_draw(struct client_ctx *cc)
 }
 
 void
-mousefunc_client_resize(struct client_ctx *cc, void *arg)
+mousefunc_client_resize(struct client_ctx *cc, union arg *arg)
 {
 	XEvent			 ev;
 	Time			 ltime = 0;
@@ -120,11 +120,12 @@ mousefunc_client_resize(struct client_ctx *cc, void *arg)
 }
 
 void
-mousefunc_client_move(struct client_ctx *cc, void *arg)
+mousefunc_client_move(struct client_ctx *cc, union arg *arg)
 {
 	XEvent			 ev;
 	Time			 ltime = 0;
 	struct screen_ctx	*sc = cc->sc;
+	struct geom		 xine;
 	int			 px, py;
 
 	client_raise(cc);
@@ -145,12 +146,15 @@ mousefunc_client_move(struct client_ctx *cc, void *arg)
 			cc->geom.x = ev.xmotion.x_root - px - cc->bwidth;
 			cc->geom.y = ev.xmotion.y_root - py - cc->bwidth;
 
+			xine = screen_find_xinerama(sc,
+			    cc->geom.x + cc->geom.w / 2,
+			    cc->geom.y + cc->geom.h / 2, CWM_GAP);
 			cc->geom.x += client_snapcalc(cc->geom.x,
 			    cc->geom.x + cc->geom.w + (cc->bwidth * 2),
-			    sc->work.x, sc->work.w, sc->snapdist);
+			    xine.x, xine.x + xine.w, sc->snapdist);
 			cc->geom.y += client_snapcalc(cc->geom.y,
 			    cc->geom.y + cc->geom.h + (cc->bwidth * 2),
-			    sc->work.y, sc->work.h, sc->snapdist);
+			    xine.y, xine.y + xine.h, sc->snapdist);
 
 			/* don't move more than 60 times / second */
 			if ((ev.xmotion.time - ltime) > (1000 / 60)) {
@@ -169,50 +173,19 @@ mousefunc_client_move(struct client_ctx *cc, void *arg)
 }
 
 void
-mousefunc_client_grouptoggle(struct client_ctx *cc, void *arg)
+mousefunc_client_grouptoggle(struct client_ctx *cc, union arg *arg)
 {
 	group_sticky_toggle_enter(cc);
 }
 
 void
-mousefunc_client_lower(struct client_ctx *cc, void *arg)
-{
-	client_ptrsave(cc);
-	client_lower(cc);
-}
-
-void
-mousefunc_client_raise(struct client_ctx *cc, void *arg)
-{
-	client_raise(cc);
-}
-
-void
-mousefunc_client_hide(struct client_ctx *cc, void *arg)
-{
-	client_hide(cc);
-}
-
-void
-mousefunc_client_cyclegroup(struct client_ctx *cc, void *arg)
-{
-	group_cycle(cc->sc, CWM_CYCLE);
-}
-
-void
-mousefunc_client_rcyclegroup(struct client_ctx *cc, void *arg)
-{
-	group_cycle(cc->sc, CWM_RCYCLE);
-}
-
-void
-mousefunc_menu_group(struct client_ctx *cc, void *arg)
+mousefunc_menu_group(struct client_ctx *cc, union arg *arg)
 {
 	group_menu(cc->sc);
 }
 
 void
-mousefunc_menu_unhide(struct client_ctx *cc, void *arg)
+mousefunc_menu_unhide(struct client_ctx *cc, union arg *arg)
 {
 	struct screen_ctx	*sc = cc->sc;
 	struct client_ctx	*old_cc;
@@ -223,25 +196,21 @@ mousefunc_menu_unhide(struct client_ctx *cc, void *arg)
 	old_cc = client_current();
 
 	TAILQ_INIT(&menuq);
-
 	TAILQ_FOREACH(cc, &Clientq, entry)
 		if (cc->flags & CLIENT_HIDDEN) {
 			wname = (cc->label) ? cc->label : cc->name;
 			if (wname == NULL)
 				continue;
 
-			mi = xcalloc(1, sizeof(*mi));
-			(void)snprintf(mi->text, sizeof(mi->text), "(%d) %s",
-			    cc->group ? cc->group->shortcut : 0, wname);
-			mi->ctx = cc;
-			TAILQ_INSERT_TAIL(&menuq, mi, entry);
+			menuq_add(&menuq, cc, "(%d) %s",
+			    cc->group->shortcut, wname);
 		}
 
 	if (TAILQ_EMPTY(&menuq))
 		return;
 
-	mi = menu_filter(sc, &menuq, NULL, NULL, 0, NULL, NULL);
-	if (mi != NULL) {
+	if ((mi = menu_filter(sc, &menuq, NULL, NULL, 0,
+	    NULL, NULL)) != NULL) {
 		cc = (struct client_ctx *)mi->ctx;
 		client_unhide(cc);
 
@@ -254,27 +223,23 @@ mousefunc_menu_unhide(struct client_ctx *cc, void *arg)
 }
 
 void
-mousefunc_menu_cmd(struct client_ctx *cc, void *arg)
+mousefunc_menu_cmd(struct client_ctx *cc, union arg *arg)
 {
 	struct screen_ctx	*sc = cc->sc;
+	struct cmd		*cmd;
 	struct menu		*mi;
 	struct menu_q		 menuq;
-	struct cmd		*cmd;
 
 	TAILQ_INIT(&menuq);
+	TAILQ_FOREACH(cmd, &Conf.cmdq, entry)
+		menuq_add(&menuq, cmd, "%s", cmd->name);
 
-	TAILQ_FOREACH(cmd, &Conf.cmdq, entry) {
-		mi = xcalloc(1, sizeof(*mi));
-		(void)strlcpy(mi->text, cmd->label, sizeof(mi->text));
-		mi->ctx = cmd;
-		TAILQ_INSERT_TAIL(&menuq, mi, entry);
-	}
 	if (TAILQ_EMPTY(&menuq))
 		return;
 
-	mi = menu_filter(sc, &menuq, NULL, NULL, 0, NULL, NULL);
-	if (mi != NULL)
-		u_spawn(((struct cmd *)mi->ctx)->image);
+	if ((mi = menu_filter(sc, &menuq, NULL, NULL, 0,
+	    NULL, NULL)) != NULL)
+		u_spawn(((struct cmd *)mi->ctx)->path);
 
 	menuq_clear(&menuq);
 }
