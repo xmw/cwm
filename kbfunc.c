@@ -61,6 +61,11 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 	unsigned int		 mx, my;
 	int			ox, oy, ow, oh;
 
+	int left = -cc->geom.x, right = sc->work.w - cc->geom.x - cc->geom.w;
+	int up = -cc->geom.y, down = sc->work.h - cc->geom.y - cc->geom.h;
+	int sel, dx, dy;
+	struct client_ctx *tc;
+
 	if (cc->flags & CLIENT_FREEZE)
 		return;
 
@@ -137,6 +142,30 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		xu_ptr_setpos(sc->rootwin, x + mx, y + my);
 		break;
 	case CWM_SNAP:
+		// single plain sweep
+	        TAILQ_FOREACH(tc, &Clientq, entry) {
+			if (tc->flags & CLIENT_HIDDEN) continue;
+			if (tc == cc) continue;
+			
+			#define max(a,b) (a > b ? a : b)
+			#define min(a,b) (a < b ? a : b)
+			for (sel = 0; sel < 4; sel++) {
+				dx = tc->geom.x - cc->geom.x \
+					+ (sel/2)*(tc->geom.w + 2*tc->bwidth) \
+					- (sel%2)*(cc->geom.w + 2*cc->bwidth);
+				if (dx < 0) left = max(left, dx);
+				if (dx > 0) right = min(right, dx);
+
+				dy = tc->geom.y - cc->geom.y \
+					+ (sel/2)*(tc->geom.h + 2*tc->bwidth) \
+					- (sel%2)*(cc->geom.h + 2*cc->bwidth);
+				if (dy < 0) up = max(up, dy);
+				if (dy > 0) down = min(down, dy);
+			}
+		};
+		debug("next on the left %d, right %d, up %d, down %d\n", 
+			left, right, up, down);
+
 		ox = cc->geom.x; ow = cc->geom.w;
 		oy = cc->geom.y; oh = cc->geom.h;
 		#define sw sc->work.w
@@ -147,21 +176,13 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		#define nx cc->geom.x
 		#define ny cc->geom.y
 		if (flags & CWM_UP) {
-			if (oy > sh - oh - bw) ny = sh - oh - bw;
-			else if ( oy > (sh - oh - bw) / 2 ) ny = (sh - oh - bw) / 2;
-			else ny = 0;
+			cc->geom.y += up;
 		} else if (flags & CWM_DOWN) {
-			if (oy < 0) ny = 0;
-			else if (oy < (sh - oh - bw) / 2) ny = (sh - oh - bw)/2;
-			else ny = sh - oh - bw;
+			cc->geom.y += down;
 		} else if (flags & CWM_LEFT) {
-			if (ox + bw > sw - ow) nx = sw - ow - bw;
-			else if (ox > (sw - ow - bw) / 2) nx = (sw - ow - bw) / 2;
-			else cc->geom.x = 0;
+			cc->geom.x += left;
 		} else if (flags & CWM_RIGHT) {
-			if (ox < 0) nx = 0;
-			else if (ox < (sw - ow - bw) / 2) nx = (sw - ow - bw) / 2;
-			else nx = sw - ow - bw;
+			cc->geom.x += right;
 		} else if (flags & ( CWM_GROW | CWM_SHRINK)) {
 			if (flags & CWM_GROW ) {
 				if ((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) {
