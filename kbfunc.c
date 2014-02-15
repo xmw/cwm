@@ -174,10 +174,10 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		client_ptrwarp(cc);
 		break;
 	case CWM_SNAPTILE: // move right border only == resize
-		left = -cc->geom.w;
+		left = cc->initgeom.w - cc->geom.w;
 		right = sc->work.x + sc->work.w \
 			- cc->geom.x - cc->geom.w - 2 * cc->bwidth;
-		up = -cc->geom.h;
+		up = cc->initgeom.h - cc->geom.h;
 		down = sc->work.h + sc->work.y \
 			- cc->geom.y - cc->geom.h - 2 * cc->bwidth;
 	        TAILQ_FOREACH(tc, &Clientq, entry) {

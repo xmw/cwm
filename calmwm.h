@@ -165,7 +165,7 @@ struct client_ctx {
 	Colormap		 colormap;
 	unsigned int		 bwidth; /* border width */
 	unsigned int		 bwidthmax; /* border width maximized */
-	struct geom		 geom, savegeom, fullgeom;
+	struct geom		 geom, savegeom, fullgeom, initgeom;
 	struct {
 		long		 flags;	/* defined hints */
 		int		 basew;	/* desired width */
