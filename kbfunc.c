@@ -61,8 +61,10 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 	unsigned int		 mx, my;
 	int			ox, oy, ow, oh;
 
-	int left = -cc->geom.x, right = sc->work.w - cc->geom.x - cc->geom.w;
-	int up = -cc->geom.y, down = sc->work.h - cc->geom.y - cc->geom.h;
+	int left = sc->work.x - cc->geom.x;
+	int right = left + sc->work.w - cc->geom.w - 2 * cc->bwidth;
+	int up = sc->work.y - cc->geom.y;
+	int down = up + sc->work.h - cc->geom.h - 2 * cc->bwidth;
 	int sel, dx, dy;
 	struct client_ctx *tc;
 
