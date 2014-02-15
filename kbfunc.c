@@ -50,8 +50,10 @@ kbfunc_client_raise(struct client_ctx *cc, union arg *arg)
 	client_raise(cc);
 }
 
-#define TYPEMASK	(CWM_MOVE | CWM_RESIZE | CWM_PTRMOVE | CWM_SNAP)
+#define TYPEMASK	(CWM_MOVE | CWM_RESIZE | CWM_PTRMOVE | CWM_SNAP | CWM_SNAPTILE)
 #define MOVEMASK	(CWM_UP | CWM_DOWN | CWM_LEFT | CWM_RIGHT)
+#define max(a,b) (a > b ? a : b)
+#define min(a,b) (a < b ? a : b)
 void
 kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 {
@@ -59,12 +61,8 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 	struct geom		 xine;
 	int			 x, y, flags, amt;
 	unsigned int		 mx, my;
-	int			ox, oy, ow, oh;
 
-	int left = sc->work.x - cc->geom.x;
-	int right = left + sc->work.w - cc->geom.w - 2 * cc->bwidth;
-	int up = sc->work.y - cc->geom.y;
-	int down = up + sc->work.h - cc->geom.h - 2 * cc->bwidth;
+	int left, right, up, down;
 	int sel, dx, dy;
 	struct client_ctx *tc;
 
@@ -143,96 +141,79 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		xu_ptr_getpos(sc->rootwin, &x, &y);
 		xu_ptr_setpos(sc->rootwin, x + mx, y + my);
 		break;
-	case CWM_SNAP:
-		// single plain sweep
+	case CWM_SNAP: // move both borders == move window
+		left = sc->work.x - cc->geom.x;
+		right = left + sc->work.w - cc->geom.w - 2 * cc->bwidth;
+		up = sc->work.y - cc->geom.y;
+		down = up + sc->work.h - cc->geom.h - 2 * cc->bwidth;
 	        TAILQ_FOREACH(tc, &Clientq, entry) {
-			if (tc->flags & CLIENT_HIDDEN) continue;
-			if (tc == cc) continue;
+			if ((tc == cc) || (tc->flags & CLIENT_HIDDEN)) continue;
 			
-			#define max(a,b) (a > b ? a : b)
-			#define min(a,b) (a < b ? a : b)
 			for (sel = 0; sel < 4; sel++) {
 				dx = tc->geom.x - cc->geom.x \
-					+ (sel/2)*(tc->geom.w + 2*tc->bwidth) \
-					- (sel%2)*(cc->geom.w + 2*cc->bwidth);
+					+ (sel%2)*(tc->geom.w + 2*tc->bwidth) \
+					- (sel/2)*(cc->geom.w + 2*cc->bwidth);
 				if (dx < 0) left = max(left, dx);
 				if (dx > 0) right = min(right, dx);
 
 				dy = tc->geom.y - cc->geom.y \
-					+ (sel/2)*(tc->geom.h + 2*tc->bwidth) \
-					- (sel%2)*(cc->geom.h + 2*cc->bwidth);
+					+ (sel%2)*(tc->geom.h + 2*tc->bwidth) \
+					- (sel/2)*(cc->geom.h + 2*cc->bwidth);
 				if (dy < 0) up = max(up, dy);
 				if (dy > 0) down = min(down, dy);
 			}
 		};
-		debug("next on the left %d, right %d, up %d, down %d\n", 
-			left, right, up, down);
-
-		ox = cc->geom.x; ow = cc->geom.w;
-		oy = cc->geom.y; oh = cc->geom.h;
-		#define sw sc->work.w
-		#define sh sc->work.h
-		#define bw 2 * cc->bwidth
-		#define nw cc->geom.w
-		#define nh cc->geom.h
-		#define nx cc->geom.x
-		#define ny cc->geom.y
-		if (flags & CWM_UP) {
-			cc->geom.y += min(0, up);
-		} else if (flags & CWM_DOWN) {
-			cc->geom.y += max(0, down);
-		} else if (flags & CWM_LEFT) {
-			cc->geom.x += min(0, left);
-		} else if (flags & CWM_RIGHT) {
-			cc->geom.x += max(0, right);
-		} else if (flags & ( CWM_GROW | CWM_SHRINK)) {
-			if (flags & CWM_GROW ) {
-				if ((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) {
-				} else if (ow + bw < sw / 3) {
-					nw = sw / 3 - bw; 
-					nh = sh / 3 - bw;
-				} else if (ow + bw < sw / 2) {
-					nw = sw / 2 - bw; 
-					nh = sh / 2 - bw;
-				} else if (ow + bw < sw * 2 / 3) {
-					nw = sw * 2 / 3 - bw;
-					nh = sh * 2 / 3 - bw;
-				} else {
-					client_maximize(cc);
-					goto end;
-				}
-			} else {
-				if ((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) {
-					client_maximize(cc);
-					goto end;
-				} else if (ow + bw > sw * 2 / 3) {
-					nw = sw * 2 / 3 - bw; 
-					nh = sh * 2 / 3 - bw;
-				} else if (ow + bw> sw / 2) {
-					nw = sw / 2 - bw; 
-					nh = sh / 2 - bw;
-				} else if (ow + bw > sw / 3) {
-					nw = sw / 3 - bw;
-					nh = sh / 3 - bw;
-				}
-			}
-			nx += (ow - nw)/2;
-			ny += (oh - nh)/2;
-			if (abs(ox) < Conf.snapdist) nx = 0;
-			else if (abs(sw - bw - ox - ow) < Conf.snapdist) nx = sw - bw - nw;
-			if (abs(oy) < Conf.snapdist) ny = 0;
-			else if (abs(sh - bw - oy - oh) < Conf.snapdist) ny = sh - nh - bw;
-			if (nx < 0) nx = 0;
-			else if (nx + nw + bw > sw) nx = sw - nw - bw;
-			if (ny < 0) ny = 0;
-			else if (ny + nh + bw > sh) ny = sh - nh - bw;
+		switch (flags & (CWM_UP|CWM_DOWN|CWM_LEFT|CWM_RIGHT)) {
+			case CWM_UP:     cc->geom.y += min(0, up);    break;
+			case CWM_DOWN:   cc->geom.y += max(0, down);  break;
+			case CWM_LEFT:   cc->geom.x += min(0, left);  break;
+			case CWM_RIGHT:  cc->geom.x += max(0, right); break;
 		}
 		client_ptrsave(cc);
-		client_resize(cc, 0);
-		cc->ptr.x += (nw - ow)/2;
-		cc->ptr.y += (nh - oh)/2;
+		client_move(cc);
 		client_ptrwarp(cc);
-		end:
+		break;
+	case CWM_SNAPTILE: // move right border only == resize
+		left = -cc->geom.w;
+		right = sc->work.x + sc->work.w \
+			- cc->geom.x - cc->geom.w - 2 * cc->bwidth;
+		up = -cc->geom.h;
+		down = sc->work.h + sc->work.y \
+			- cc->geom.y - cc->geom.h - 2 * cc->bwidth;
+	        TAILQ_FOREACH(tc, &Clientq, entry) {
+			if ((tc == cc) || (tc->flags & CLIENT_HIDDEN)) continue;
+			
+			dx = - cc->geom.x - cc->geom.w - 2*cc->bwidth \
+				+ tc->geom.x;
+			for (sel = 2; sel; sel--) {
+				if (dx < 0) left = max(left, dx);
+				if (dx > 0) right = min(right, dx);
+				dx += tc->geom.w + 2*tc->bwidth;
+			}
+
+			dy = - cc->geom.y - cc->geom.h - 2*cc->bwidth \
+				+ tc->geom.y;
+			for (sel = 2; sel; sel--) {
+				if (dy < 0) up = max(up, dy);
+				if (dy > 0) down = min(down, dy);
+				dy += tc->geom.h + 2*tc->bwidth;
+			}
+		};
+		if (cc->geom.h + up <= 0) up = 0; 
+		if (cc->geom.w + left <= 0) left = 0; 
+		switch (flags & (CWM_UP|CWM_DOWN|CWM_LEFT|CWM_RIGHT)) {
+			case CWM_UP:     cc->geom.h += min(0, up);    break;
+			case CWM_DOWN:   cc->geom.h += max(0, down);  break;
+			case CWM_LEFT:   cc->geom.w += min(0, left);  break;
+			case CWM_RIGHT:  cc->geom.w += max(0, right); break;
+		}
+		client_resize(cc, 1);
+
+		/* Make sure the pointer stays within the window. */
+		xu_ptr_getpos(cc->win, &cc->ptr.x, &cc->ptr.y);
+		if (cc->ptr.x > cc->geom.w) cc->ptr.x = cc->geom.w - cc->bwidth;
+		if (cc->ptr.y > cc->geom.h) cc->ptr.y = cc->geom.h - cc->bwidth;
+		client_ptrwarp(cc);
 		break;
 	default:
 		warnx("invalid flags passed to kbfunc_client_moveresize");
