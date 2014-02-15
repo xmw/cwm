@@ -165,12 +165,13 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		}
 		int dx = - sc->work.x + sc->work.w / 2 - cc->geom.x;
 		int dy = - sc->work.y + sc->work.h / 2 - cc->geom.y;
-		for (sel = 3; sel; sel--) {
+		for (sel = 2; ; sel--) {
 			debug("dx=%d, dy=%d\n", dx, dy);
 			if (dx < 0) left = max(left, dx);
 			else if (dx > 0) right=min(right, dx);
 			if (dy < 0) up = max(up, dy);
 			else if (dy > 0) down = min(down, dy);
+			if (! sel) break;
 			dx -= cc->geom.w / 2 + cc->bwidth;
 			dy -= cc->geom.h / 2 + cc->bwidth;
 		}
