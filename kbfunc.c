@@ -178,13 +178,13 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		#define nx cc->geom.x
 		#define ny cc->geom.y
 		if (flags & CWM_UP) {
-			cc->geom.y += up;
+			cc->geom.y += min(0, up);
 		} else if (flags & CWM_DOWN) {
-			cc->geom.y += down;
+			cc->geom.y += max(0, down);
 		} else if (flags & CWM_LEFT) {
-			cc->geom.x += left;
+			cc->geom.x += min(0, left);
 		} else if (flags & CWM_RIGHT) {
-			cc->geom.x += right;
+			cc->geom.x += max(0, right);
 		} else if (flags & ( CWM_GROW | CWM_SHRINK)) {
 			if (flags & CWM_GROW ) {
 				if ((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) {
