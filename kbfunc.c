@@ -162,7 +162,18 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 				if (dy < 0) up = max(up, dy);
 				if (dy > 0) down = min(down, dy);
 			}
-		};
+		}
+		int dx = - sc->work.x + sc->work.w / 2 - cc->geom.x;
+		int dy = - sc->work.y + sc->work.h / 2 - cc->geom.y;
+		for (sel = 3; sel; sel--) {
+			debug("dx=%d, dy=%d\n", dx, dy);
+			if (dx < 0) left = max(left, dx);
+			else if (dx > 0) right=min(right, dx);
+			if (dy < 0) up = max(up, dy);
+			else if (dy > 0) down = min(down, dy);
+			dx -= cc->geom.w / 2 + cc->bwidth;
+			dy -= cc->geom.h / 2 + cc->bwidth;
+		}
 		switch (flags & (CWM_UP|CWM_DOWN|CWM_LEFT|CWM_RIGHT)) {
 			case CWM_UP:     cc->geom.y += min(0, up);    break;
 			case CWM_DOWN:   cc->geom.y += max(0, down);  break;
