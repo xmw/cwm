@@ -1,0 +1,8 @@
+clean up snap and snaptile functionality in separate function
+
+implement move (all) windows here function
+
+consider xinerama screens for snap positions
+
+	join screen and window snap positions into int[]
+
