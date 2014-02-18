@@ -50,10 +50,8 @@ kbfunc_client_raise(struct client_ctx *cc, union arg *arg)
 	client_raise(cc);
 }
 
-#define TYPEMASK	(CWM_MOVE | CWM_RESIZE | CWM_PTRMOVE | CWM_SNAP | CWM_SNAPTILE)
+#define TYPEMASK	(CWM_MOVE | CWM_RESIZE | CWM_PTRMOVE)
 #define MOVEMASK	(CWM_UP | CWM_DOWN | CWM_LEFT | CWM_RIGHT)
-#define max(a,b) (a > b ? a : b)
-#define min(a,b) (a < b ? a : b)
 void
 kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 {
@@ -61,10 +59,6 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 	struct geom		 xine;
 	int			 x, y, flags, amt;
 	unsigned int		 mx, my;
-
-	int left, right, up, down;
-	int sel, dx, dy;
-	struct client_ctx *tc;
 
 	if (cc->flags & CLIENT_FREEZE)
 		return;
@@ -141,7 +135,31 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		xu_ptr_getpos(sc->rootwin, &x, &y);
 		xu_ptr_setpos(sc->rootwin, x + mx, y + my);
 		break;
-	case CWM_SNAP: // move both borders == move window
+	default:
+		warnx("invalid flags passed to kbfunc_client_moveresize");
+	}
+}
+
+#define max(a,b) (a > b ? a : b)
+#define min(a,b) (a < b ? a : b)
+void
+kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
+{
+	struct screen_ctx	*sc = cc->sc;
+	struct geom		 xine;
+	int 			flags = arg->i;
+
+	int left, right, up, down;
+	int sel, dx, dy;
+	struct client_ctx *tc;
+
+
+	xine = screen_find_xinerama(sc,
+	    cc->geom.x + cc->geom.w / 2,
+	    cc->geom.y + cc->geom.h / 2, CWM_GAP);
+
+	switch (flags & (CWM_MOVE |  CWM_RESIZE)) {
+	case CWM_MOVE: // move both borders == move window
 		left = sc->work.x - cc->geom.x;
 		right = left + sc->work.w - cc->geom.w - 2 * cc->bwidth;
 		up = sc->work.y - cc->geom.y;
@@ -185,7 +203,7 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		client_move(cc);
 		client_ptrwarp(cc);
 		break;
-	case CWM_SNAPTILE: // move right border only == resize
+	case CWM_RESIZE: // move right border only == resize
 		left = cc->initgeom.w - cc->geom.w;
 		right = sc->work.x + sc->work.w \
 			- cc->geom.x - cc->geom.w - 2 * cc->bwidth;
@@ -227,9 +245,36 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 		if (cc->ptr.y > cc->geom.h) cc->ptr.y = cc->geom.h - cc->bwidth;
 		client_ptrwarp(cc);
 		break;
-	default:
-		warnx("invalid flags passed to kbfunc_client_moveresize");
 	}
+}
+
+void
+kbfunc_client_movehere(struct client_ctx *cc, union arg *arg)
+{
+	struct screen_ctx	*sc = cc->sc;
+	int			move = 0;
+	
+	debug("mark a\n");
+	if (cc->geom.x > (sc->work.x + sc->work.w)) { move = 1;
+		debug("cc->geom.x = %i, sc->work.x = %i, sc->work.w = %i;\n", cc->geom.x, sc->work.x, sc->work.w);
+		cc->geom.x = sc->work.x + sc->work.w - cc->geom.w; }
+	if (cc->geom.x + cc->geom.w < sc->work.x) { move = 2; 
+		cc->geom.x = sc->work.x; }
+	if (cc->geom.y > sc->work.y + sc->work.h) { move = 3; 
+		cc->geom.y = sc->work.y + sc->work.h - cc->geom.h; }
+	if (cc->geom.y + cc->geom.h < sc->work.y) { move = 4; 
+		cc->geom.y = sc->work.y; }
+
+	debug("mark b, move = %d\n", move);
+	if (move) client_move(cc);
+}
+
+void
+kbfunc_client_moveallhere(struct client_ctx *cc, union arg *arg)
+{
+	//struct screen_ctx	*sc = cc->sc;
+	//int			move = 0;
+	
 }
 
 void

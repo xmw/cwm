@@ -230,6 +230,8 @@ static const struct {
 	{ "M-J",	"bigmovedown" },
 	{ "M-K",	"bigmoveup" },
 	{ "M-L",	"bigmoveright" },
+	{ "4-b",	"movehere" },
+	{ "4-B",	"moveallhere" },
 	{ "CM-h",	"resizeleft" },
 	{ "CM-j",	"resizedown" },
 	{ "CM-k",	"resizeup" },
@@ -274,7 +276,7 @@ conf_init(struct conf *c)
 	(void)memset(c, 0, sizeof(*c));
 
 	c->bwidth = CONF_BWIDTH;
-	c->bwidthmax = CONF_BWIDTHMAX;
+	c->bwidthmax = CONF_BWIDTH;
 	c->mamount = CONF_MAMOUNT;
 	c->snapdist = CONF_SNAPDIST;
 
@@ -449,6 +451,8 @@ static const struct {
 	    {.i = (CWM_RIGHT|CWM_MOVE|CWM_BIGMOVE)} },
 	{ "bigmoveleft", kbfunc_client_moveresize, CWM_WIN,
 	    {.i = (CWM_LEFT|CWM_MOVE|CWM_BIGMOVE)} },
+	//{ "movehere", kbfunc_client_movehere, 0, {0} },
+	//{ "moveallhere", kbfunc_client_moveallhere, 0, {0} },
 	{ "resizeup", kbfunc_client_moveresize, CWM_WIN,
 	    {.i = (CWM_UP|CWM_RESIZE)} },
 	{ "resizedown", kbfunc_client_moveresize, CWM_WIN,
@@ -483,22 +487,22 @@ static const struct {
 	    {.i = (CWM_RIGHT|CWM_PTRMOVE|CWM_BIGMOVE)} },
 	{ "htile", kbfunc_tile, CWM_WIN, {.i = CWM_TILE_HORIZ} },
 	{ "vtile", kbfunc_tile, CWM_WIN, {.i = CWM_TILE_VERT} },
-	{ "snapup", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_UP|CWM_SNAP)} },
-	{ "snapdown", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_DOWN|CWM_SNAP)} },
-	{ "snapleft", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_LEFT|CWM_SNAP)} },
-	{ "snapright", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_RIGHT|CWM_SNAP)} },
-	{ "snaptileup", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_UP|CWM_SNAPTILE)} },
-	{ "snaptiledown", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_DOWN|CWM_SNAPTILE)} },
-	{ "snaptileleft", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_LEFT|CWM_SNAPTILE)} },
-	{ "snaptileright", kbfunc_client_moveresize, CWM_WIN,
-	    {.i = (CWM_RIGHT|CWM_SNAPTILE)} },
+	{ "snapup", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_UP|CWM_MOVE)} },
+	{ "snapdown", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_DOWN|CWM_MOVE)} },
+	{ "snapleft", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_LEFT|CWM_MOVE)} },
+	{ "snapright", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_RIGHT|CWM_MOVE)} },
+	{ "snaptileup", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_UP|CWM_RESIZE)} },
+	{ "snaptiledown", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_DOWN|CWM_RESIZE)} },
+	{ "snaptileleft", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_LEFT|CWM_RESIZE)} },
+	{ "snaptileright", kbfunc_client_snap, CWM_WIN,
+	    {.i = (CWM_RIGHT|CWM_RESIZE)} },
 };
 
 static const struct {

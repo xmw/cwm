@@ -245,6 +245,7 @@ client_fullscreen(struct client_ctx *cc)
 {
 	struct screen_ctx	*sc = cc->sc;
 	struct geom		 xine;
+	int x, y;
 
 	if ((cc->flags & CLIENT_FREEZE) &&
 	    !(cc->flags & CLIENT_FULLSCREEN))
@@ -259,7 +260,6 @@ client_fullscreen(struct client_ctx *cc)
 
 	cc->fullgeom = cc->geom;
 
-	int x, y;
 	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
 	    x, y, CWM_NOGAP);
@@ -278,6 +278,7 @@ client_maximize(struct client_ctx *cc)
 {
 	struct screen_ctx	*sc = cc->sc;
 	struct geom		 xine;
+	int x, y;
 
 	if (cc->flags & CLIENT_FREEZE)
 		return;
@@ -303,7 +304,6 @@ client_maximize(struct client_ctx *cc)
 	 * that's probably more fair than if just the origin of
 	 * a window is poking over a boundary
 	 */
-	int x, y;
 	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
 	    x, y, CWM_GAP);
@@ -324,6 +324,7 @@ client_vmaximize(struct client_ctx *cc)
 {
 	struct screen_ctx	*sc = cc->sc;
 	struct geom		 xine;
+	int x, y;
 
 	if (cc->flags & CLIENT_FREEZE)
 		return;
@@ -338,7 +339,6 @@ client_vmaximize(struct client_ctx *cc)
 	cc->savegeom.y = cc->geom.y;
 	cc->savegeom.h = cc->geom.h;
 
-	int x, y;
 	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
 	xine = screen_find_xinerama(sc,
 	    x, y, CWM_GAP);
@@ -506,7 +506,6 @@ client_draw_border(struct client_ctx *cc)
 {
 	struct screen_ctx	*sc = cc->sc;
 	unsigned long		 pixel;
-	unsigned int		 bwidth;
 
 	if (cc->active)
 		switch (cc->flags & CLIENT_HIGHLIGHT) {
@@ -519,19 +518,16 @@ client_draw_border(struct client_ctx *cc)
 		default:
 			pixel = sc->xftcolor[CWM_COLOR_BORDER_ACTIVE].pixel;
 			break;
-		}
+		} 
 	else
 		pixel = sc->xftcolor[CWM_COLOR_BORDER_INACTIVE].pixel;
 
 	if (cc->flags & CLIENT_URGENCY)
 		pixel = sc->xftcolor[CWM_COLOR_BORDER_URGENCY].pixel;
 
-	if ((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) {
-		bwidth = cc->bwidthmax;
-	} else {
-		bwidth = cc->bwidth;
-	}
-	XSetWindowBorderWidth(X_Dpy, cc->win, bwidth);
+	XSetWindowBorderWidth(X_Dpy, cc->win, 
+		((cc->flags & CLIENT_MAXFLAGS) == CLIENT_MAXIMIZED) ?
+		cc->bwidthmax : cc->bwidth);
 	XSetWindowBorder(X_Dpy, cc->win, pixel);
 }
 

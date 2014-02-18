@@ -72,8 +72,6 @@ size_t strlcat(char *, const char *, size_t);
 #define CWM_DOWN		0x0020
 #define CWM_LEFT		0x0040
 #define CWM_RIGHT		0x0080
-#define CWM_SNAP		0x0100
-#define CWM_SNAPTILE		0x0200
 
 /* exec */
 #define	CWM_EXEC_PROGRAM	0x0001
@@ -164,8 +162,9 @@ struct client_ctx {
 	Window			 win;
 	Colormap		 colormap;
 	unsigned int		 bwidth; /* border width */
+	struct geom		 geom, savegeom, fullgeom;
+	struct geom		 initgeom; /* initial window size */
 	unsigned int		 bwidthmax; /* border width maximized */
-	struct geom		 geom, savegeom, fullgeom, initgeom;
 	struct {
 		long		 flags;	/* defined hints */
 		int		 basew;	/* desired width */
@@ -315,7 +314,6 @@ struct conf {
 	int			 flags;
 #define CONF_BWIDTH			1
 	int			 bwidth;
-#define CONF_BWIDTHMAX			1
 	int			 bwidthmax;
 #define	CONF_MAMOUNT			1
 	int			 mamount;
@@ -487,6 +485,7 @@ void			 kbfunc_client_maximize(struct client_ctx *,
 			     union arg *);
 void			 kbfunc_client_moveresize(struct client_ctx *,
 			     union arg *);
+void			 kbfunc_client_snap(struct client_ctx *, union arg *);
 void			 kbfunc_client_movetogroup(struct client_ctx *,
 			     union arg *);
 void			 kbfunc_client_nogroup(struct client_ctx *,

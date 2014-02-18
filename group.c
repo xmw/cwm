@@ -256,11 +256,9 @@ group_hidetoggle(struct screen_ctx *sc, int idx)
 				}
 			}
 		}
-		//return;
 	}
 
 	group_fix_hidden_state(gc);
-	debug("group_hidetoggle idx=%i, gc->hidden=%i\n", idx, gc->hidden);
 
 	if (gc->hidden)
 		group_show(sc, gc);
@@ -391,10 +389,7 @@ group_autogroup(struct client_ctx *cc)
 			no = *grpno;
 		XFree(grpno);
 	} else {
-		debug("search class=%s name=%s\n", cc->ch.res_class, cc->ch.res_name);
 		TAILQ_FOREACH(aw, &Conf.autogroupq, entry) {
-			debug("  probe num=%i class=%s name=%s, ", 
-				aw->num, aw->class, aw->name);
 			if (strcasecmp(aw->class, cc->ch.res_class) == 0) {
 				if ((aw->name != NULL) &&
 				    (strcasecmp(aw->name, cc->ch.res_name) == 0)) {
@@ -403,8 +398,6 @@ group_autogroup(struct client_ctx *cc)
 				} else if (aw->name == NULL && !both_match)
 					no = aw->num;
 			}
-			debug("\t current no=%i, both_match=%i\n", 
-				no, both_match);
 		}
 	}
 
