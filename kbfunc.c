@@ -249,32 +249,30 @@ kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 }
 
 void
-kbfunc_client_movehere(struct client_ctx *cc, union arg *arg)
+kbfunc_client_box(struct client_ctx *cc, union arg *arg)
 {
-	struct screen_ctx	*sc = cc->sc;
-	int			move = 0;
-	
-	debug("mark a\n");
-	if (cc->geom.x > (sc->work.x + sc->work.w)) { move = 1;
-		debug("cc->geom.x = %i, sc->work.x = %i, sc->work.w = %i;\n", cc->geom.x, sc->work.x, sc->work.w);
-		cc->geom.x = sc->work.x + sc->work.w - cc->geom.w; }
-	if (cc->geom.x + cc->geom.w < sc->work.x) { move = 2; 
-		cc->geom.x = sc->work.x; }
-	if (cc->geom.y > sc->work.y + sc->work.h) { move = 3; 
-		cc->geom.y = sc->work.y + sc->work.h - cc->geom.h; }
-	if (cc->geom.y + cc->geom.h < sc->work.y) { move = 4; 
-		cc->geom.y = sc->work.y; }
+	struct geom		xine;
+	int			x, y, move;
+	struct client_ctx	*tc = cc;
 
-	debug("mark b, move = %d\n", move);
-	if (move) client_move(cc);
-}
+	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
+        xine = screen_find_xinerama(cc->sc, x, y, CWM_GAP);
 
-void
-kbfunc_client_moveallhere(struct client_ctx *cc, union arg *arg)
-{
-	//struct screen_ctx	*sc = cc->sc;
-	//int			move = 0;
+	if (arg->i == 1) tc = TAILQ_FIRST(&Clientq);
 	
+	while (tc) {
+		move = 4;
+		x = xine.x + xine.w - tc->geom.w - 2 * tc->bwidth;
+		if (tc->geom.x > x) tc->geom.x = x;           else move--;
+		if (tc->geom.x < xine.x) tc->geom.x = xine.x; else move--;
+		y = xine.y + xine.h - tc->geom.h - 2 * tc->bwidth;
+		if (tc->geom.y > y) tc->geom.y = y;           else move--;
+		if (tc->geom.y < xine.y) tc->geom.y = xine.y; else move--;
+		if (move) client_move(tc);
+
+		if (arg->i == 0) break;
+		tc = TAILQ_NEXT(tc, entry);
+	}
 }
 
 void

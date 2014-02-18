@@ -230,8 +230,6 @@ static const struct {
 	{ "M-J",	"bigmovedown" },
 	{ "M-K",	"bigmoveup" },
 	{ "M-L",	"bigmoveright" },
-	{ "4-b",	"movehere" },
-	{ "4-B",	"moveallhere" },
 	{ "CM-h",	"resizeleft" },
 	{ "CM-j",	"resizedown" },
 	{ "CM-k",	"resizeup" },
@@ -256,6 +254,8 @@ static const struct {
 	{ "4S-Home",	"snaptileup" },
 	{ "4S-Delete",	"snaptiledown" },
 	{ "4S-End",	"snaptileright" },
+	{ "4-b",	"box" },
+	{ "4S-b",	"boxall" },
 },
 mouse_binds[] = {
 	{ "1",		"menu_unhide" },
@@ -451,8 +451,6 @@ static const struct {
 	    {.i = (CWM_RIGHT|CWM_MOVE|CWM_BIGMOVE)} },
 	{ "bigmoveleft", kbfunc_client_moveresize, CWM_WIN,
 	    {.i = (CWM_LEFT|CWM_MOVE|CWM_BIGMOVE)} },
-	//{ "movehere", kbfunc_client_movehere, 0, {0} },
-	//{ "moveallhere", kbfunc_client_moveallhere, 0, {0} },
 	{ "resizeup", kbfunc_client_moveresize, CWM_WIN,
 	    {.i = (CWM_UP|CWM_RESIZE)} },
 	{ "resizedown", kbfunc_client_moveresize, CWM_WIN,
@@ -503,6 +501,8 @@ static const struct {
 	    {.i = (CWM_LEFT|CWM_RESIZE)} },
 	{ "snaptileright", kbfunc_client_snap, CWM_WIN,
 	    {.i = (CWM_RIGHT|CWM_RESIZE)} },
+	{ "box", kbfunc_client_box, CWM_WIN, {.i = 0}},
+	{ "boxall", kbfunc_client_box, CWM_WIN, {.i = 1}},
 };
 
 static const struct {
