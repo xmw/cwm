@@ -501,8 +501,8 @@ static const struct {
 	    {.i = (CWM_LEFT|CWM_RESIZE)} },
 	{ "snaptileright", kbfunc_client_snap, CWM_WIN,
 	    {.i = (CWM_RIGHT|CWM_RESIZE)} },
-	{ "box", kbfunc_client_box, CWM_WIN, {.i = 0}},
-	{ "boxall", kbfunc_client_box, CWM_WIN, {.i = 1}},
+	{ "box", kbfunc_client_box, CWM_WIN, {0}},
+	{ "boxall", kbfunc_client_box_all, CWM_WIN, {0}},
 };
 
 static const struct {

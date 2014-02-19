@@ -253,26 +253,32 @@ kbfunc_client_box(struct client_ctx *cc, union arg *arg)
 {
 	struct geom		xine;
 	int			x, y, move;
-	struct client_ctx	*tc = cc;
 
 	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
         xine = screen_find_xinerama(cc->sc, x, y, CWM_GAP);
 
-	if (arg->i == 1) tc = TAILQ_FIRST(&Clientq);
-	
-	while (tc) {
-		move = 4;
-		x = xine.x + xine.w - tc->geom.w - 2 * tc->bwidth;
-		if (tc->geom.x > x) tc->geom.x = x;           else move--;
-		if (tc->geom.x < xine.x) tc->geom.x = xine.x; else move--;
-		y = xine.y + xine.h - tc->geom.h - 2 * tc->bwidth;
-		if (tc->geom.y > y) tc->geom.y = y;           else move--;
-		if (tc->geom.y < xine.y) tc->geom.y = xine.y; else move--;
-		if (move) client_move(tc);
+	debug("box name=%s at (%i,%i,%i,%i) assoc with (%i,%i,%i,%i)\n", 
+		cc->ch.res_name, 
+		cc->geom.x, cc->geom.y, cc->geom.w, cc->geom.h,
+		xine.x, xine.y, xine.w, xine.h);
 
-		if (arg->i == 0) break;
-		tc = TAILQ_NEXT(tc, entry);
-	}
+	move = 0;
+	x = xine.x + xine.w - cc->geom.w / 2 - cc->bwidth;
+	if (cc->geom.x > x) { cc->geom.x = x; move = 1; }
+	x = xine.x - cc->geom.w / 2 - cc->bwidth;
+	if (cc->geom.x < x) { cc->geom.x = x; move = 1; }
+	y = xine.y + xine.h - cc->geom.h / 2 - cc->bwidth;
+	if (cc->geom.y > y) { cc->geom.y = y; move = 1; }
+	y = xine.y - cc->geom.h / 2 - cc->bwidth;
+	if (cc->geom.y < y) { cc->geom.y = y; move = 1; }
+	if (move) client_move(cc);
+}
+
+void
+kbfunc_client_box_all(struct client_ctx *cc, union arg *arg)
+{
+	TAILQ_FOREACH(cc, &Clientq, entry)
+		kbfunc_client_box(cc, arg);
 }
 
 void

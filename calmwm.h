@@ -487,6 +487,7 @@ void			 kbfunc_client_moveresize(struct client_ctx *,
 			     union arg *);
 void			 kbfunc_client_snap(struct client_ctx *, union arg *);
 void			 kbfunc_client_box(struct client_ctx *, union arg *);
+void			 kbfunc_client_box_all(struct client_ctx *, union arg *);
 void			 kbfunc_client_movetogroup(struct client_ctx *,
 			     union arg *);
 void			 kbfunc_client_nogroup(struct client_ctx *,
