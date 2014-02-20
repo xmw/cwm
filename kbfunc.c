@@ -248,29 +248,57 @@ kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 	}
 }
 
+int
+client_region_dist(struct client_ctx *cc, struct region_ctx *rc)
+{
+	struct gap	dist;
+
+	dist.left   = rc->area.x 
+		- (cc->geom.x + cc->geom.w + 2 * cc->bwidth);
+	dist.right  = cc->geom.x
+		- (rc->area.x + rc->area.w);
+	dist.top    = rc->area.y
+		- (cc->geom.y + cc->geom.h + 2 * cc->bwidth);
+	dist.bottom = cc->geom.y
+		- (rc->area.y + rc->area.h);
+
+	debug("region(%i) dist: left=%i top=%i right=%i bottom=%i\n",
+		rc->num, dist.left, dist.top, dist.right, dist.bottom);
+
+	return max(dist.left, max(dist.right, max(dist.top, dist.bottom)));
+
+}
+
+
 void
 kbfunc_client_box(struct client_ctx *cc, union arg *arg)
 {
-	struct geom		xine;
-	int			x, y, move;
+	struct region_ctx	*rc, *closest;
+	int			dist, min_dist;
+	int			x, y, move = 0;
 
-	xu_ptr_getpos(cc->sc->rootwin, &x, &y);
-        xine = screen_find_xinerama(cc->sc, x, y, CWM_GAP);
+	closest = rc = TAILQ_FIRST(&cc->sc->regionq);
+	min_dist = client_region_dist(cc, rc);
 
-	debug("box name=%s at (%i,%i,%i,%i) assoc with (%i,%i,%i,%i)\n", 
-		cc->ch.res_name, 
-		cc->geom.x, cc->geom.y, cc->geom.w, cc->geom.h,
-		xine.x, xine.y, xine.w, xine.h);
+	while ((rc = TAILQ_NEXT(rc, entry))) {
+		dist = client_region_dist(cc, rc);
+		if (dist > min_dist) continue;
+	
+		min_dist = dist;
+		closest = rc;
+	}
+	debug("dist(%s, region_%i) = %i\n", 
+		cc->ch.res_name, closest->num, min_dist);
 
-	move = 0;
-	x = xine.x + xine.w - cc->geom.w / 2 - cc->bwidth;
+	x = closest->area.x + closest->area.w - cc->geom.w / 2 - cc->bwidth;
 	if (cc->geom.x > x) { cc->geom.x = x; move = 1; }
-	x = xine.x - cc->geom.w / 2 - cc->bwidth;
+	x = closest->area.x - cc->geom.w / 2 - cc->bwidth;
 	if (cc->geom.x < x) { cc->geom.x = x; move = 1; }
-	y = xine.y + xine.h - cc->geom.h / 2 - cc->bwidth;
+	y = closest->area.y + closest->area.h - cc->geom.h / 2 - cc->bwidth;
 	if (cc->geom.y > y) { cc->geom.y = y; move = 1; }
-	y = xine.y - cc->geom.h / 2 - cc->bwidth;
+	y = closest->area.y - cc->geom.h / 2 - cc->bwidth;
 	if (cc->geom.y < y) { cc->geom.y = y; move = 1; }
+	
 	if (move) client_move(cc);
 }
 
