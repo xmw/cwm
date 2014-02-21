@@ -249,24 +249,16 @@ kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 }
 
 int
-client_region_dist(struct client_ctx *cc, struct region_ctx *rc)
+client_geom_dist(struct client_ctx *cc, struct geom *area)
 {
-	struct gap	dist;
+	int			left, right, top, bottom;
 
-	dist.left   = rc->area.x 
-		- (cc->geom.x + cc->geom.w + 2 * cc->bwidth);
-	dist.right  = cc->geom.x
-		- (rc->area.x + rc->area.w);
-	dist.top    = rc->area.y
-		- (cc->geom.y + cc->geom.h + 2 * cc->bwidth);
-	dist.bottom = cc->geom.y
-		- (rc->area.y + rc->area.h);
+	left   = area->x - (cc->geom.x + cc->geom.w + 2 * cc->bwidth);
+	right  = cc->geom.x - (area->x + area->w);
+	top    = area->y - (cc->geom.y + cc->geom.h + 2 * cc->bwidth);
+	bottom = cc->geom.y - (area->y + area->h);
 
-	debug("region(%i) dist: left=%i top=%i right=%i bottom=%i\n",
-		rc->num, dist.left, dist.top, dist.right, dist.bottom);
-
-	return max(dist.left, max(dist.right, max(dist.top, dist.bottom)));
-
+	return max(left, max(right, max(top, bottom)));
 }
 
 
@@ -278,10 +270,10 @@ kbfunc_client_box(struct client_ctx *cc, union arg *arg)
 	int			x, y, move = 0;
 
 	closest = rc = TAILQ_FIRST(&cc->sc->regionq);
-	min_dist = client_region_dist(cc, rc);
+	min_dist = client_geom_dist(cc, &rc->area);
 
 	while ((rc = TAILQ_NEXT(rc, entry))) {
-		dist = client_region_dist(cc, rc);
+		dist = client_geom_dist(cc, &rc->area);
 		if (dist > min_dist) continue;
 	
 		min_dist = dist;
