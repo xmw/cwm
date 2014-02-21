@@ -138,7 +138,7 @@ client_init(Window win, struct screen_ctx *sc)
 	XSync(X_Dpy, False);
 	XUngrabServer(X_Dpy);
 
-	memcpy(&cc->initgeom, &cc->geom, sizeof(struct geom));
+	cc->initgeom = cc->geom;
 
 	return (cc);
 }
