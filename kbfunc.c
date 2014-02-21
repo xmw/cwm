@@ -145,107 +145,173 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 void
 kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 {
-	struct screen_ctx	*sc = cc->sc;
-	struct geom		 xine;
+	struct gap		*gap = &cc->sc->gap;
 	int 			flags = arg->i;
-
-	int left, right, up, down;
-	int sel, dx, dy;
-	struct client_ctx *tc;
-
-
-	xine = screen_find_xinerama(sc,
-	    cc->geom.x + cc->geom.w / 2,
-	    cc->geom.y + cc->geom.h / 2, CWM_GAP);
-
+	struct region_ctx	*rc;
+	struct client_ctx 	*oc;
+	int			cw, ch, oh, ow, i, c, *h = NULL, *v = NULL;
+	int			left, right, up, down, move;
+	
+	cw = cc->geom.w + 2*cc->bwidth;
+	ch = cc->geom.h + 2*cc->bwidth;
+	
+	i = 0; // one additional for initgeom
+	TAILQ_FOREACH(rc, &cc->sc->regionq, entry)
+		i++;
+	c = 0;
+        TAILQ_FOREACH(oc, &Clientq, entry) {
+		if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
+			(oc == cc)) continue;
+		c++;
+	}
 	switch (flags & (CWM_MOVE |  CWM_RESIZE)) {
-	case CWM_MOVE: // move both borders == move window
-		left = sc->work.x - cc->geom.x;
-		right = left + sc->work.w - cc->geom.w - 2 * cc->bwidth;
-		up = sc->work.y - cc->geom.y;
-		down = up + sc->work.h - cc->geom.h - 2 * cc->bwidth;
-	        TAILQ_FOREACH(tc, &Clientq, entry) {
-			if ((tc == cc) || (tc->flags & CLIENT_HIDDEN)) continue;
-			
-			for (sel = 0; sel < 4; sel++) {
-				dx = tc->geom.x - cc->geom.x \
-					+ (sel%2)*(tc->geom.w + 2*tc->bwidth) \
-					- (sel/2)*(cc->geom.w + 2*cc->bwidth);
-				if (dx < 0) left = max(left, dx);
-				if (dx > 0) right = min(right, dx);
-
-				dy = tc->geom.y - cc->geom.y \
-					+ (sel%2)*(tc->geom.h + 2*tc->bwidth) \
-					- (sel/2)*(cc->geom.h + 2*cc->bwidth);
-				if (dy < 0) up = max(up, dy);
-				if (dy > 0) down = min(down, dy);
-			}
+	case CWM_MOVE:
+		c = i * 7 + c * 4; i = 0;
+		h = malloc(sizeof(int) * c);
+		v = malloc(sizeof(int) * c);
+		TAILQ_FOREACH(rc, &cc->sc->regionq, entry) {
+			ow = rc->area.w - gap->left - gap->right;
+			h[i + 0] = rc->area.x + gap->left - cw / 2;
+			h[i + 1] = rc->area.x + gap->left;
+			h[i + 2] = rc->area.x + (ow - 2 * cw) / 2;
+			h[i + 3] = rc->area.x + (ow -     cw) / 2;
+			h[i + 4] = rc->area.x + (ow         ) / 2;
+			h[i + 5] = rc->area.x + gap->left + ow - cw;
+			h[i + 6] = rc->area.x + gap->left + ow - cw / 2;
+			oh = rc->area.h - gap->top - gap->bottom;
+			v[i + 0] = rc->area.y + gap->top - ch / 2;
+			v[i + 1] = rc->area.y + gap->top;
+			v[i + 2] = rc->area.y + (oh - 2 * ch) / 2;
+			v[i + 3] = rc->area.y + (oh -     ch) / 2;
+			v[i + 4] = rc->area.y + (oh         ) / 2;
+			v[i + 5] = rc->area.y + gap->left + oh - ch;
+			v[i + 6] = rc->area.y + gap->left + oh - ch / 2;
+			i += 7;
 		}
-		int dx = - sc->work.x + sc->work.w / 2 - cc->geom.x;
-		int dy = - sc->work.y + sc->work.h / 2 - cc->geom.y;
-		for (sel = 2; ; sel--) {
-			debug("dx=%d, dy=%d\n", dx, dy);
-			if (dx < 0) left = max(left, dx);
-			else if (dx > 0) right=min(right, dx);
-			if (dy < 0) up = max(up, dy);
-			else if (dy > 0) down = min(down, dy);
-			if (! sel) break;
-			dx -= cc->geom.w / 2 + cc->bwidth;
-			dy -= cc->geom.h / 2 + cc->bwidth;
+	        TAILQ_FOREACH(oc, &Clientq, entry) {
+			if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
+				(oc == cc)) continue;
+			ow = oc->geom.w + 2 * oc->bwidth;
+			h[i + 0] = oc->geom.x      - cw;
+			h[i + 1] = oc->geom.x;
+			h[i + 2] = oc->geom.x + ow - cw;
+			h[i + 3] = oc->geom.x + ow;
+			oh = oc->geom.h + 2 * oc->bwidth;
+			v[i + 0] = oc->geom.y      - ch;
+			v[i + 1] = oc->geom.y;
+			v[i + 2] = oc->geom.y + oh - ch;
+			v[i + 3] = oc->geom.y + oh;
+			i += 4;
 		}
+		left = up = INT_MIN; right = down = INT_MAX;
+		while (i--) {
+			if (h[i] < cc->geom.x && h[i] > left ) left  = h[i];
+			if (h[i] > cc->geom.x && h[i] < right) right = h[i];
+			if (v[i] < cc->geom.y && v[i] > up   ) up    = v[i];
+			if (v[i] > cc->geom.y && v[i] < down ) down  = v[i];
+		}
+		move = 0;
 		switch (flags & (CWM_UP|CWM_DOWN|CWM_LEFT|CWM_RIGHT)) {
-			case CWM_UP:     cc->geom.y += min(0, up);    break;
-			case CWM_DOWN:   cc->geom.y += max(0, down);  break;
-			case CWM_LEFT:   cc->geom.x += min(0, left);  break;
-			case CWM_RIGHT:  cc->geom.x += max(0, right); break;
+			case CWM_LEFT:
+				if (left  < cc->geom.x && left  > INT_MIN) {
+					move = 1; cc->geom.x = left;  }
+				break;
+			case CWM_RIGHT:
+				if (right > cc->geom.x && right < INT_MAX) {
+					move = 1; cc->geom.x = right; }
+				break;
+			case CWM_UP:
+				if (up    < cc->geom.y && up    > INT_MIN) {
+					move = 1; cc->geom.y = up;    }
+				break;
+			case CWM_DOWN:
+				if (down  > cc->geom.y && down  < INT_MAX) {
+					move = 1; cc->geom.y = down;  }
+				break;
 		}
-		client_ptrsave(cc);
-		client_move(cc);
-		client_ptrwarp(cc);
+		if (move) {
+			client_ptrsave(cc);
+			client_move(cc);
+			client_ptrwarp(cc);
+		}
 		break;
-	case CWM_RESIZE: // move right border only == resize
-		left = cc->initgeom.w - cc->geom.w;
-		right = sc->work.x + sc->work.w \
-			- cc->geom.x - cc->geom.w - 2 * cc->bwidth;
-		up = cc->initgeom.h - cc->geom.h;
-		down = sc->work.h + sc->work.y \
-			- cc->geom.y - cc->geom.h - 2 * cc->bwidth;
-	        TAILQ_FOREACH(tc, &Clientq, entry) {
-			if ((tc == cc) || (tc->flags & CLIENT_HIDDEN)) continue;
-			
-			dx = - cc->geom.x - cc->geom.w - 2*cc->bwidth \
-				+ tc->geom.x;
-			for (sel = 2; sel; sel--) {
-				if (dx < 0) left = max(left, dx);
-				if (dx > 0) right = min(right, dx);
-				dx += tc->geom.w + 2*tc->bwidth;
-			}
-
-			dy = - cc->geom.y - cc->geom.h - 2*cc->bwidth \
-				+ tc->geom.y;
-			for (sel = 2; sel; sel--) {
-				if (dy < 0) up = max(up, dy);
-				if (dy > 0) down = min(down, dy);
-				dy += tc->geom.h + 2*tc->bwidth;
-			}
-		};
-		if (cc->geom.h + up <= 0) up = 0; 
-		if (cc->geom.w + left <= 0) left = 0; 
-		switch (flags & (CWM_UP|CWM_DOWN|CWM_LEFT|CWM_RIGHT)) {
-			case CWM_UP:     cc->geom.h += min(0, up);    break;
-			case CWM_DOWN:   cc->geom.h += max(0, down);  break;
-			case CWM_LEFT:   cc->geom.w += min(0, left);  break;
-			case CWM_RIGHT:  cc->geom.w += max(0, right); break;
+	case CWM_RESIZE:
+		c = i * 5 + c * 2 + 1; i = 0;
+		h = malloc(sizeof(int) * c);
+		v = malloc(sizeof(int) * c);
+		// h and v in absolute coordinates
+		TAILQ_FOREACH(rc, &cc->sc->regionq, entry) {
+			ow = rc->area.w - gap->left - gap->right;
+			h[i + 0] = rc->area.x;
+			h[i + 1] = rc->area.x + gap->left;
+			h[i + 2] = rc->area.x + gap->left + ow / 2;
+			h[i + 3] = rc->area.x + gap->left + ow;
+			h[i + 4] = rc->area.x + rc->area.w;
+			oh = rc->area.h - gap->top - gap->bottom;
+			v[i + 0] = rc->area.y;
+			v[i + 1] = rc->area.y + gap->top;
+			v[i + 2] = rc->area.y + gap->top + oh / 2;
+			v[i + 3] = rc->area.y + gap->top + oh;
+			v[i + 4] = rc->area.y + rc->area.h;
+			i += 5;
 		}
-		client_resize(cc, 1);
-
-		/* Make sure the pointer stays within the window. */
-		xu_ptr_getpos(cc->win, &cc->ptr.x, &cc->ptr.y);
-		if (cc->ptr.x > cc->geom.w) cc->ptr.x = cc->geom.w - cc->bwidth;
-		if (cc->ptr.y > cc->geom.h) cc->ptr.y = cc->geom.h - cc->bwidth;
-		client_ptrwarp(cc);
+	        TAILQ_FOREACH(oc, &Clientq, entry) {
+			if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
+				(oc == cc)) continue;
+			ow = oc->geom.w + 2 * oc->bwidth;
+			h[i + 0] = oc->geom.x;
+			h[i + 1] = oc->geom.x + ow;
+			oh = oc->geom.h + 2 * oc->bwidth;
+			v[i + 0] = oc->geom.y;
+			v[i + 1] = oc->geom.y + oh;
+			i += 2;
+		}
+		h[i] = cc->geom.x + cc->initgeom.w + 2 * cc->bwidth;
+		v[i] = cc->geom.y + cc->initgeom.h + 2 * cc->bwidth;
+		i++;
+		left = up = INT_MIN; right = down = INT_MAX;
+		while (i--) {
+			// back to relative width and height
+			h[i] -= cc->geom.x + 2 * cc->bwidth;
+			v[i] -= cc->geom.y + 2 * cc->bwidth;
+			if (h[i] < cc->geom.w && h[i] > left ) left  = h[i];
+			if (h[i] > cc->geom.w && h[i] < right) right = h[i];
+			if (v[i] < cc->geom.h && v[i] > up   ) up    = v[i];
+			if (v[i] > cc->geom.h && v[i] < down ) down  = v[i];
+		}
+		move = 0;
+		switch (flags & (CWM_UP|CWM_DOWN|CWM_LEFT|CWM_RIGHT)) {
+			case CWM_LEFT:
+				if (left  < cc->geom.w && left  > 0) {
+					move = 1; cc->geom.w = left;  }
+				break;
+			case CWM_RIGHT:
+				if (right > cc->geom.w && right < INT_MAX) {
+					move = 1; cc->geom.w = right; }
+				break;
+			case CWM_UP:
+				if (up    < cc->geom.h && up    > 0) {
+					move = 1; cc->geom.h = up;    }
+				break;
+			case CWM_DOWN:
+				if (down  > cc->geom.h && down  < INT_MAX) {
+					move = 1; cc->geom.h = down;  }
+				break;
+		}
+		if (move) {
+			client_resize(cc, 1);
+			// Make sure the pointer stays within the window.
+			xu_ptr_getpos(cc->win, &cc->ptr.x, &cc->ptr.y);
+			if (cc->ptr.x > cc->geom.w)
+				cc->ptr.x = cc->geom.w - cc->bwidth;
+			if (cc->ptr.y > cc->geom.h)
+				cc->ptr.y = cc->geom.h - cc->bwidth;
+			client_ptrwarp(cc);
+		}
 		break;
 	}
+	free(h);
+	free(v);
 }
 
 int
