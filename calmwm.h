@@ -210,6 +210,7 @@ struct client_ctx {
 	struct group_ctx	*group;
 	XClassHint		ch;
 	XWMHints		*wmh;
+	int			seq;
 };
 TAILQ_HEAD(client_ctx_q, client_ctx);
 TAILQ_HEAD(cycle_entry_q, client_ctx);

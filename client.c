@@ -54,6 +54,8 @@ client_find(Window win)
 	return (NULL);
 }
 
+static int client_seq_next = 0;
+
 struct client_ctx *
 client_init(Window win, struct screen_ctx *sc)
 {
@@ -125,6 +127,8 @@ client_init(Window win, struct screen_ctx *sc)
 		state = NormalState;
 
 	(state == IconicState) ? client_hide(cc) : client_unhide(cc);
+
+	cc->seq = client_seq_next++;
 
 	TAILQ_INSERT_TAIL(&sc->mruq, cc, mru_entry);
 	TAILQ_INSERT_TAIL(&Clientq, cc, entry);
