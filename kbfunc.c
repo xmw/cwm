@@ -367,6 +367,72 @@ kbfunc_client_box_all(struct client_ctx *cc, union arg *arg)
 		kbfunc_client_box(cc, arg);
 }
 
+int
+sign3(int a, int b, int c) {
+	if ((a < 0) || (a == 0 && b < 0) ||
+		(a == 0 && b == 0 && c < 0)) return -1;
+	if ((a > 0) || (a == 0 && b > 0) ||
+		(a == 0 && b == 0 && c > 0)) return 1;
+	return 0;
+}
+
+void
+kbfunc_client_focus(struct client_ctx *cc, union arg *arg)
+{
+	struct client_ctx	*oc, *best = NULL;
+
+	TAILQ_FOREACH(oc, &Clientq, entry) {
+		if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
+			(oc == cc)) continue;
+
+		switch (arg->i) {
+		case CWM_LEFT:
+			if (sign3(oc->geom.x - cc->geom.x,
+				oc->geom.y - cc->geom.y,
+				oc->seq - cc->seq) >= 0) break;
+			if (best == NULL) { best = oc; break; }
+			if (sign3(oc->geom.x - best->geom.x,
+				oc->geom.y - best->geom.y,
+				oc->seq - best->seq) > 0) best = oc;
+			break;
+		case CWM_RIGHT:
+			if (sign3(oc->geom.x - cc->geom.x,
+				oc->geom.y - cc->geom.y,
+				oc->seq - cc->seq) <= 0) break;
+			if (best == NULL) { best = oc; break; }
+			if (sign3(oc->geom.x - best->geom.x,
+				oc->geom.y - best->geom.y,
+				oc->seq - best->seq) < 0) best = oc;
+			break;
+		case CWM_UP:
+			if (sign3(oc->geom.y - cc->geom.y,
+				oc->geom.x - cc->geom.x,
+				oc->seq - cc->seq) >= 0) break;
+			if (best == NULL) { best = oc; break; }
+			if (sign3(oc->geom.y - best->geom.y,
+				oc->geom.x - best->geom.x,
+				oc->seq - best->seq) > 0) best = oc;
+			break;
+		case CWM_DOWN:
+			if (sign3(oc->geom.y - cc->geom.y,
+				oc->geom.x - cc->geom.x,
+				oc->seq - cc->seq) <= 0) break;
+			if (best == NULL) { best = oc; break; }
+			if (sign3(oc->geom.y - best->geom.y,
+				oc->geom.x - best->geom.x,
+				oc->seq - best->seq) < 0) best = oc;
+			break;
+		default:
+			debug("not implemented\n");
+		}
+	}
+	if (best != NULL && best != cc) {
+		client_ptrsave(cc);
+		client_ptrwarp(best);
+	}
+}
+
+
 void
 kbfunc_client_search(struct client_ctx *cc, union arg *arg)
 {
