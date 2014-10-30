@@ -60,7 +60,7 @@ kbfunc_client_moveresize(struct client_ctx *cc, union arg *arg)
 	int			 x, y, flags, amt;
 	unsigned int		 mx, my;
 
-	if (cc->flags & CLIENT_FREEZE)
+	if (cc->flags & (CLIENT_FREEZE|CLIENT_STICKY))
 		return;
 
 	mx = my = 0;
@@ -159,7 +159,7 @@ kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 	TAILQ_FOREACH(rc, &cc->sc->regionq, entry)
 		i++;
 	c = 0;
-        TAILQ_FOREACH(oc, &Clientq, entry) {
+        TAILQ_FOREACH(oc, &cc->sc->clientq, entry) {
 		if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
 			(oc == cc)) continue;
 		c++;
@@ -188,7 +188,7 @@ kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 			v[i + 6] = rc->area.y + gap->left + oh - ch / 2;
 			i += 7;
 		}
-	        TAILQ_FOREACH(oc, &Clientq, entry) {
+	        TAILQ_FOREACH(oc, &cc->sc->clientq, entry) {
 			if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
 				(oc == cc)) continue;
 			ow = oc->geom.w + 2 * oc->bwidth;
@@ -255,7 +255,7 @@ kbfunc_client_snap(struct client_ctx *cc, union arg *arg)
 			v[i + 4] = rc->area.y + rc->area.h;
 			i += 5;
 		}
-	        TAILQ_FOREACH(oc, &Clientq, entry) {
+	        TAILQ_FOREACH(oc, &cc->sc->clientq, entry) {
 			if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
 				(oc == cc)) continue;
 			ow = oc->geom.w + 2 * oc->bwidth;
@@ -363,7 +363,7 @@ kbfunc_client_box(struct client_ctx *cc, union arg *arg)
 void
 kbfunc_client_box_all(struct client_ctx *cc, union arg *arg)
 {
-	TAILQ_FOREACH(cc, &Clientq, entry)
+	TAILQ_FOREACH(cc, &cc->sc->clientq, entry)
 		kbfunc_client_box(cc, arg);
 }
 
@@ -381,7 +381,7 @@ kbfunc_client_focus(struct client_ctx *cc, union arg *arg)
 {
 	struct client_ctx	*oc, *best = NULL;
 
-	TAILQ_FOREACH(oc, &Clientq, entry) {
+	TAILQ_FOREACH(oc, &cc->sc->clientq, entry) {
 		if ((oc->flags & (CLIENT_HIDDEN | CLIENT_IGNORE)) ||
 			(oc == cc)) continue;
 
@@ -444,7 +444,7 @@ kbfunc_client_search(struct client_ctx *cc, union arg *arg)
 	old_cc = client_current();
 
 	TAILQ_INIT(&menuq);
-	TAILQ_FOREACH(cc, &Clientq, entry)
+	TAILQ_FOREACH(cc, &sc->clientq, entry)
 		menuq_add(&menuq, cc, "%s", cc->name);
 
 	if ((mi = menu_filter(sc, &menuq, "window", NULL, 0,
@@ -452,7 +452,6 @@ kbfunc_client_search(struct client_ctx *cc, union arg *arg)
 		cc = (struct client_ctx *)mi->ctx;
 		if (cc->flags & CLIENT_HIDDEN)
 			client_unhide(cc);
-
 		if (old_cc)
 			client_ptrsave(old_cc);
 		client_ptrwarp(cc);
@@ -507,13 +506,23 @@ kbfunc_cmdexec(struct client_ctx *cc, union arg *arg)
 void
 kbfunc_term(struct client_ctx *cc, union arg *arg)
 {
-	u_spawn(Conf.termpath);
+	struct cmd *cmd;
+
+	TAILQ_FOREACH(cmd, &Conf.cmdq, entry) {
+		if (strcmp(cmd->name, "term") == 0)
+			u_spawn(cmd->path);
+	}
 }
 
 void
 kbfunc_lock(struct client_ctx *cc, union arg *arg)
 {
-	u_spawn(Conf.lockpath);
+	struct cmd *cmd;
+
+	TAILQ_FOREACH(cmd, &Conf.cmdq, entry) {
+		if (strcmp(cmd->name, "lock") == 0)
+			u_spawn(cmd->path);
+	}
 }
 
 void
@@ -565,8 +574,7 @@ kbfunc_exec(struct client_ctx *cc, union arg *arg)
 			(void)memset(tpath, '\0', sizeof(tpath));
 			l = snprintf(tpath, sizeof(tpath), "%s/%s", paths[i],
 			    dp->d_name);
-			/* check for truncation etc */
-			if (l == -1 || l >= (int)sizeof(tpath))
+			if (l == -1 || l >= sizeof(tpath))
 				continue;
 			if (access(tpath, X_OK) == 0)
 				menuq_add(&menuq, NULL, "%s", dp->d_name);
@@ -603,18 +611,24 @@ void
 kbfunc_ssh(struct client_ctx *cc, union arg *arg)
 {
 	struct screen_ctx	*sc = cc->sc;
+	struct cmd		*cmd;
 	struct menu		*mi;
 	struct menu_q		 menuq;
 	FILE			*fp;
 	char			*buf, *lbuf, *p;
 	char			 hostbuf[MAXHOSTNAMELEN];
-	char			 cmd[256];
+	char			 path[MAXPATHLEN];
 	int			 l;
 	size_t			 len;
 
 	if ((fp = fopen(Conf.known_hosts, "r")) == NULL) {
 		warn("kbfunc_ssh: %s", Conf.known_hosts);
 		return;
+	}
+
+	TAILQ_FOREACH(cmd, &Conf.cmdq, entry) {
+		if (strcmp(cmd->name, "term") == 0)
+			break;
 	}
 
 	TAILQ_INIT(&menuq);
@@ -649,10 +663,11 @@ kbfunc_ssh(struct client_ctx *cc, union arg *arg)
 	    search_match_exec, NULL)) != NULL) {
 		if (mi->text[0] == '\0')
 			goto out;
-		l = snprintf(cmd, sizeof(cmd), "%s -T '[ssh] %s' -e ssh %s",
-		    Conf.termpath, mi->text, mi->text);
-		if (l != -1 && l < sizeof(cmd))
-			u_spawn(cmd);
+		l = snprintf(path, sizeof(path), "%s -T '[ssh] %s' -e ssh %s",
+		    cmd->path, mi->text, mi->text);
+		if (l == -1 || l >= sizeof(path))
+			goto out;
+		u_spawn(path);
 	}
 out:
 	if (mi != NULL && mi->dummy)
@@ -716,7 +731,7 @@ kbfunc_client_grouptoggle(struct client_ctx *cc, union arg *arg)
 	XGrabKeyboard(X_Dpy, cc->win, True,
 	    GrabModeAsync, GrabModeAsync, CurrentTime);
 
-	group_sticky_toggle_enter(cc);
+	group_toggle_membership_enter(cc);
 }
 
 void
@@ -726,33 +741,39 @@ kbfunc_client_movetogroup(struct client_ctx *cc, union arg *arg)
 }
 
 void
-kbfunc_client_fullscreen(struct client_ctx *cc, union arg *arg)
+kbfunc_client_toggle_sticky(struct client_ctx *cc, union arg *arg)
 {
-	client_fullscreen(cc);
+	client_toggle_sticky(cc);
 }
 
 void
-kbfunc_client_maximize(struct client_ctx *cc, union arg *arg)
+kbfunc_client_toggle_fullscreen(struct client_ctx *cc, union arg *arg)
 {
-	client_maximize(cc);
+	client_toggle_fullscreen(cc);
 }
 
 void
-kbfunc_client_vmaximize(struct client_ctx *cc, union arg *arg)
+kbfunc_client_toggle_maximize(struct client_ctx *cc, union arg *arg)
 {
-	client_vmaximize(cc);
+	client_toggle_maximize(cc);
 }
 
 void
-kbfunc_client_hmaximize(struct client_ctx *cc, union arg *arg)
+kbfunc_client_toggle_vmaximize(struct client_ctx *cc, union arg *arg)
 {
-	client_hmaximize(cc);
+	client_toggle_vmaximize(cc);
 }
 
 void
-kbfunc_client_freeze(struct client_ctx *cc, union arg *arg)
+kbfunc_client_toggle_hmaximize(struct client_ctx *cc, union arg *arg)
 {
-	client_freeze(cc);
+	client_toggle_hmaximize(cc);
+}
+
+void
+kbfunc_client_toggle_freeze(struct client_ctx *cc, union arg *arg)
+{
+	client_toggle_freeze(cc);
 }
 
 void

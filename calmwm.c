@@ -41,14 +41,13 @@ Atom				 cwmh[CWMH_NITEMS];
 Atom				 ewmh[EWMH_NITEMS];
 
 struct screen_ctx_q		 Screenq = TAILQ_HEAD_INITIALIZER(Screenq);
-struct client_ctx_q		 Clientq = TAILQ_HEAD_INITIALIZER(Clientq);
 
 int				 HasRandr, Randr_ev;
 struct conf			 Conf;
 const char			*homedir;
 volatile sig_atomic_t		 cwm_status;
 
-static void	sigchld_cb(int);
+static void	sighdlr(int);
 static int	x_errorhandler(Display *, XErrorEvent *);
 static void	x_init(const char *);
 static void	x_restart(char **);
@@ -84,7 +83,7 @@ main(int argc, char **argv)
 	argc -= optind;
 	argv += optind;
 
-	if (signal(SIGCHLD, sigchld_cb) == SIG_ERR)
+	if (signal(SIGCHLD, sighdlr) == SIG_ERR)
 		err(1, "signal");
 
 	if ((homedir = getenv("HOME")) == NULL || *homedir == '\0') {
@@ -120,7 +119,7 @@ main(int argc, char **argv)
 	if (cwm_status == CWM_RESTART)
 		x_restart(cwm_argv);
 
-	return (0);
+	return(0);
 }
 
 static void
@@ -185,7 +184,7 @@ x_wmerrorhandler(Display *dpy, XErrorEvent *e)
 {
 	errx(1, "root window unavailable - perhaps another wm is running?");
 
-	return (0);
+	return(0);
 }
 
 static int
@@ -201,20 +200,23 @@ x_errorhandler(Display *dpy, XErrorEvent *e)
 
 	warnx("%s(0x%x): %s", req, (unsigned int)e->resourceid, msg);
 #endif
-	return (0);
+	return(0);
 }
 
 static void
-sigchld_cb(int which)
+sighdlr(int sig)
 {
 	pid_t	 pid;
-	int	 save_errno = errno;
-	int	 status;
+	int	 save_errno = errno, status;
 
-	/* Collect dead children. */
-	while ((pid = waitpid(-1, &status, WNOHANG)) > 0 ||
-	    (pid < 0 && errno == EINTR))
-		;
+	switch (sig) {
+	case SIGCHLD:
+		/* Collect dead children. */
+		while ((pid = waitpid(WAIT_ANY, &status, WNOHANG)) > 0 ||
+		    (pid < 0 && errno == EINTR))
+			;
+		break;
+	}
 
 	errno = save_errno;
 }

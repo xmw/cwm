@@ -38,20 +38,32 @@ screen_init(int which)
 	XSetWindowAttributes	 rootattr;
 	unsigned int		 nwins, i;
 
-	sc = xcalloc(1, sizeof(*sc));
+	sc = xmalloc(sizeof(*sc));
 
-	TAILQ_INIT(&sc->mruq);
+	TAILQ_INIT(&sc->clientq);
 	TAILQ_INIT(&sc->regionq);
+	TAILQ_INIT(&sc->groupq);
 
 	sc->which = which;
 	sc->rootwin = RootWindow(X_Dpy, sc->which);
+	sc->cycling = 0;
+	sc->hideall = 0;
+
 	conf_screen(sc);
 
 	xu_ewmh_net_supported(sc);
 	xu_ewmh_net_supported_wm_check(sc);
 
 	screen_update_geometry(sc);
-	group_init(sc);
+
+	for (i = 0; i < CALMWM_NGROUPS; i++)
+		group_init(sc, i);
+
+	xu_ewmh_net_desktop_names(sc);
+	xu_ewmh_net_wm_desktop_viewport(sc);
+	xu_ewmh_net_wm_number_of_desktops(sc);
+	xu_ewmh_net_showing_desktop(sc);
+	xu_ewmh_net_virtual_roots(sc);
 
 	rootattr.cursor = Conf.cursor[CF_NORMAL];
 	rootattr.event_mask = SubstructureRedirectMask|SubstructureNotifyMask|
@@ -69,7 +81,6 @@ screen_init(int which)
 		XFree(wins);
 	}
 	screen_updatestackingorder(sc);
-	group_set_state(sc);
 
 	if (HasRandr)
 		XRRSelectInput(X_Dpy, sc->rootwin, RRScreenChangeNotifyMask);
@@ -80,16 +91,16 @@ screen_init(int which)
 }
 
 struct screen_ctx *
-screen_fromroot(Window rootwin)
+screen_find(Window win)
 {
 	struct screen_ctx	*sc;
 
-	TAILQ_FOREACH(sc, &Screenq, entry)
-		if (sc->rootwin == rootwin)
-			return (sc);
-
+	TAILQ_FOREACH(sc, &Screenq, entry) {
+		if (sc->rootwin == win)
+			return(sc);
+	}
 	/* XXX FAIL HERE */
-	return (TAILQ_FIRST(&Screenq));
+	return(TAILQ_FIRST(&Screenq));
 }
 
 void
@@ -105,7 +116,7 @@ screen_updatestackingorder(struct screen_ctx *sc)
 			if ((cc = client_find(wins[i])) == NULL ||
 			    cc->flags & CLIENT_HIDDEN)
 				continue;
-	
+
 			cc->stackingorder = s++;
 		}
 		XFree(wins);
@@ -134,7 +145,7 @@ screen_find_xinerama(struct screen_ctx *sc, int x, int y, int flags)
 		geom.w -= (sc->gap.left + sc->gap.right);
 		geom.h -= (sc->gap.top + sc->gap.bottom);
 	}
-	return (geom);
+	return(geom);
 }
 
 void
@@ -142,7 +153,7 @@ screen_update_geometry(struct screen_ctx *sc)
 {
 	XineramaScreenInfo	*info = NULL;
 	struct region_ctx	*region;
-	int			 info_no = 0, i;
+	int			 info_num = 0, i;
 
 	sc->view.x = 0;
 	sc->view.y = 0;
@@ -156,13 +167,13 @@ screen_update_geometry(struct screen_ctx *sc)
 
 	/* RandR event may have a CTRC added or removed. */
 	if (XineramaIsActive(X_Dpy))
-		info = XineramaQueryScreens(X_Dpy, &info_no);
+		info = XineramaQueryScreens(X_Dpy, &info_num);
 
 	while ((region = TAILQ_FIRST(&sc->regionq)) != NULL) {
 		TAILQ_REMOVE(&sc->regionq, region, entry);
 		free(region);
 	}
-	for (i = 0; i < info_no; i++) {
+	for (i = 0; i < info_num; i++) {
 		region = xmalloc(sizeof(*region));
 		region->num = i;
 		region->area.x = info[i].x_org;

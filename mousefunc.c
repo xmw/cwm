@@ -73,7 +73,7 @@ mousefunc_client_resize(struct client_ctx *cc, union arg *arg)
 	struct screen_ctx	*sc = cc->sc;
 	int			 x = cc->geom.x, y = cc->geom.y;
 
-	if (cc->flags & CLIENT_FREEZE)
+	if (cc->flags & (CLIENT_FREEZE|CLIENT_STICKY))
 		return;
 
 	client_raise(cc);
@@ -90,19 +90,18 @@ mousefunc_client_resize(struct client_ctx *cc, union arg *arg)
 
 		switch (ev.type) {
 		case MotionNotify:
+			/* not more than 60 times / second */
+			if ((ev.xmotion.time - ltime) <= (1000 / 60))
+				continue;
+			ltime = ev.xmotion.time;
+
 			mousefunc_sweep_calc(cc, x, y,
 			    ev.xmotion.x_root, ev.xmotion.y_root);
-
-			/* don't resize more than 60 times / second */
-			if ((ev.xmotion.time - ltime) > (1000 / 60)) {
-				ltime = ev.xmotion.time;
-				client_resize(cc, 1);
-				mousefunc_sweep_draw(cc);
-			}
+			client_resize(cc, 1);
+			mousefunc_sweep_draw(cc);
 			break;
 		case ButtonRelease:
-			if (ltime)
-				client_resize(cc, 1);
+			client_resize(cc, 1);
 			XUnmapWindow(X_Dpy, sc->menuwin);
 			XReparentWindow(X_Dpy, sc->menuwin, sc->rootwin, 0, 0);
 			xu_ptr_ungrab();
@@ -130,7 +129,7 @@ mousefunc_client_move(struct client_ctx *cc, union arg *arg)
 
 	client_raise(cc);
 
-	if (cc->flags & CLIENT_FREEZE)
+	if (cc->flags & (CLIENT_FREEZE|CLIENT_STICKY))
 		return;
 
 	if (xu_ptr_grab(cc->win, MOUSEMASK, Conf.cursor[CF_MOVE]) < 0)
@@ -143,6 +142,11 @@ mousefunc_client_move(struct client_ctx *cc, union arg *arg)
 
 		switch (ev.type) {
 		case MotionNotify:
+			/* not more than 60 times / second */
+			if ((ev.xmotion.time - ltime) <= (1000 / 60))
+				continue;
+			ltime = ev.xmotion.time;
+
 			cc->geom.x = ev.xmotion.x_root - px - cc->bwidth;
 			cc->geom.y = ev.xmotion.y_root - py - cc->bwidth;
 
@@ -156,15 +160,10 @@ mousefunc_client_move(struct client_ctx *cc, union arg *arg)
 			    cc->geom.y + cc->geom.h + (cc->bwidth * 2),
 			    xine.y, xine.y + xine.h, sc->snapdist);
 
-			/* don't move more than 60 times / second */
-			if ((ev.xmotion.time - ltime) > (1000 / 60)) {
-				ltime = ev.xmotion.time;
-				client_move(cc);
-			}
+			client_move(cc);
 			break;
 		case ButtonRelease:
-			if (ltime)
-				client_move(cc);
+			client_move(cc);
 			xu_ptr_ungrab();
 			return;
 		}
@@ -175,13 +174,36 @@ mousefunc_client_move(struct client_ctx *cc, union arg *arg)
 void
 mousefunc_client_grouptoggle(struct client_ctx *cc, union arg *arg)
 {
-	group_sticky_toggle_enter(cc);
+	group_toggle_membership_enter(cc);
 }
 
 void
 mousefunc_menu_group(struct client_ctx *cc, union arg *arg)
 {
-	group_menu(cc->sc);
+	struct screen_ctx	*sc = cc->sc;
+	struct group_ctx	*gc;
+	struct menu		*mi;
+	struct menu_q		 menuq;
+
+	TAILQ_INIT(&menuq);
+	TAILQ_FOREACH(gc, &sc->groupq, entry) {
+		if (group_holds_only_sticky(gc))
+			continue;
+		menuq_add(&menuq, gc,
+		    group_holds_only_hidden(gc) ? "%d: [%s]" : "%d: %s",
+		    gc->num, gc->name);
+	}
+	if (TAILQ_EMPTY(&menuq))
+		return;
+
+	if ((mi = menu_filter(sc, &menuq, NULL, NULL, 0,
+	    NULL, NULL)) != NULL) {
+		gc = (struct group_ctx *)mi->ctx;
+		(group_holds_only_hidden(gc)) ?
+		    group_show(gc) : group_hide(gc);
+	}
+
+	menuq_clear(&menuq);
 }
 
 void
@@ -196,16 +218,15 @@ mousefunc_menu_unhide(struct client_ctx *cc, union arg *arg)
 	old_cc = client_current();
 
 	TAILQ_INIT(&menuq);
-	TAILQ_FOREACH(cc, &Clientq, entry)
+	TAILQ_FOREACH(cc, &sc->clientq, entry) {
 		if (cc->flags & CLIENT_HIDDEN) {
 			wname = (cc->label) ? cc->label : cc->name;
 			if (wname == NULL)
 				continue;
-
 			menuq_add(&menuq, cc, "(%d) %s",
-			    cc->group->shortcut, wname);
+			    cc->group ? cc->group->num : 0, wname);
 		}
-
+	}
 	if (TAILQ_EMPTY(&menuq))
 		return;
 
@@ -213,7 +234,6 @@ mousefunc_menu_unhide(struct client_ctx *cc, union arg *arg)
 	    NULL, NULL)) != NULL) {
 		cc = (struct client_ctx *)mi->ctx;
 		client_unhide(cc);
-
 		if (old_cc != NULL)
 			client_ptrsave(old_cc);
 		client_ptrwarp(cc);
@@ -233,7 +253,6 @@ mousefunc_menu_cmd(struct client_ctx *cc, union arg *arg)
 	TAILQ_INIT(&menuq);
 	TAILQ_FOREACH(cmd, &Conf.cmdq, entry)
 		menuq_add(&menuq, cmd, "%s", cmd->name);
-
 	if (TAILQ_EMPTY(&menuq))
 		return;
 

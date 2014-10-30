@@ -3,7 +3,7 @@
 
 PROG=		cwm
 
-PREFIX=         /usr/local
+PREFIX?=	/usr/local
 
 SRCS=		calmwm.c screen.c xmalloc.c client.c menu.c \
 		search.c util.c xutil.c conf.c xevents.c group.c \
@@ -21,7 +21,7 @@ CFLAGS+=	-D_GNU_SOURCE
 
 LDFLAGS+=	$(shell pkg-config --libs fontconfig x11 xft xinerama xrandr)
 
-MANPREFIX=	${PREFIX}/share/man
+MANPREFIX?=	${PREFIX}/share/man
 
 all: ${PROG}
 
