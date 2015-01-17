@@ -103,6 +103,27 @@ conf_autostart(struct conf *conf, char *cmd, int no)
 	TAILQ_INSERT_TAIL(&conf->autostartq, as, entry);
 }
 
+int
+conf_tabstop(struct conf *conf, char *align, int pos)
+{
+	struct tabstop		*ts;
+	while (align) {
+		ts = xcalloc(1, sizeof(*ts));
+		ts->pos = pos;
+		switch (align[0]) {
+		case 'l': TAILQ_INSERT_TAIL(&conf->tabstop_l_q, ts, entry); break;
+		case 'c': TAILQ_INSERT_TAIL(&conf->tabstop_c_q, ts, entry); break;
+		case 'r': TAILQ_INSERT_TAIL(&conf->tabstop_r_q, ts, entry); break;
+		case 't': TAILQ_INSERT_TAIL(&conf->tabstop_t_q, ts, entry); break;
+		case 'm': TAILQ_INSERT_TAIL(&conf->tabstop_m_q, ts, entry); break;
+		case 'b': TAILQ_INSERT_TAIL(&conf->tabstop_b_q, ts, entry); break;
+		default: free(ts); return -1;
+		}
+		align++;
+	}
+	return 0;
+}
+
 void
 conf_ignore(struct conf *c, const char *name)
 {
@@ -280,6 +301,12 @@ conf_init(struct conf *c)
 	TAILQ_INIT(&c->keybindingq);
 	TAILQ_INIT(&c->autogroupq);
 	TAILQ_INIT(&c->autostartq);
+	TAILQ_INIT(&c->tabstop_l_q);
+	TAILQ_INIT(&c->tabstop_c_q);
+	TAILQ_INIT(&c->tabstop_r_q);
+	TAILQ_INIT(&c->tabstop_t_q);
+	TAILQ_INIT(&c->tabstop_m_q);
+	TAILQ_INIT(&c->tabstop_b_q);
 	TAILQ_INIT(&c->mousebindingq);
 
 	for (i = 0; i < nitems(kbd_binds); i++)
@@ -305,6 +332,7 @@ conf_clear(struct conf *c)
 {
 	struct autogroupwin	*aw;
 	struct autostartcmd	*as;
+	struct tabstop		*ts;
 	struct binding		*kb, *mb;
 	struct winname		*wn;
 	struct cmd		*cmd;
@@ -332,6 +360,36 @@ conf_clear(struct conf *c)
 		TAILQ_REMOVE(&c->autostartq, as, entry);
 		free(as->cmd);
 		free(as);
+	}
+
+	while ((ts = TAILQ_FIRST(&c->tabstop_l_q)) != NULL) {
+		TAILQ_REMOVE(&c->tabstop_l_q, ts, entry);
+		free(ts);
+	}
+
+	while ((ts = TAILQ_FIRST(&c->tabstop_c_q)) != NULL) {
+		TAILQ_REMOVE(&c->tabstop_c_q, ts, entry);
+		free(ts);
+	}
+
+	while ((ts = TAILQ_FIRST(&c->tabstop_r_q)) != NULL) {
+		TAILQ_REMOVE(&c->tabstop_r_q, ts, entry);
+		free(ts);
+	}
+
+	while ((ts = TAILQ_FIRST(&c->tabstop_t_q)) != NULL) {
+		TAILQ_REMOVE(&c->tabstop_t_q, ts, entry);
+		free(ts);
+	}
+
+	while ((ts = TAILQ_FIRST(&c->tabstop_m_q)) != NULL) {
+		TAILQ_REMOVE(&c->tabstop_m_q, ts, entry);
+		free(ts);
+	}
+
+	while ((ts = TAILQ_FIRST(&c->tabstop_b_q)) != NULL) {
+		TAILQ_REMOVE(&c->tabstop_b_q, ts, entry);
+		free(ts);
 	}
 
 	while ((wn = TAILQ_FIRST(&c->ignoreq)) != NULL) {

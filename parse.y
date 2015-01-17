@@ -72,7 +72,7 @@ typedef struct {
 %token	AUTOGROUP BIND COMMAND IGNORE
 %token	YES NO BORDERWIDTH MOVEAMOUNT
 %token	COLOR SNAPDIST
-%token	AUTOSTART BORDERWIDTHMAX BOX BOXALL
+%token	AUTOSTART TABSTOP BORDERWIDTHMAX BOX BOXALL
 %token	ACTIVEBORDER INACTIVEBORDER URGENCYBORDER
 %token	GROUPBORDER UNGROUPBORDER
 %token	MENUBG MENUFG
@@ -175,6 +175,14 @@ main		: FONTNAME STRING		{
 
 			conf_autostart(conf, $3, $2);
 			free($3);
+		}
+		| TABSTOP STRING NUMBER {
+			if (!conf_tabstop(conf, $2, $3)) {
+				yyerror("invalid snapline: %s %s", $2, $3);
+				//free($2);
+				YYERROR;
+			}
+			//free($2);
 		}
 		| IGNORE STRING {
 			conf_ignore(conf, $2);
@@ -310,6 +318,7 @@ lookup(char *s)
 		{ "selfont", 		FONTSELCOLOR},
 		{ "snapdist",		SNAPDIST},
 		{ "sticky",		STICKY},
+		{ "tabstop", 		TABSTOP},
 		{ "ungroupborder",	UNGROUPBORDER},
 		{ "urgencyborder",	URGENCYBORDER},
 		{ "yes",		YES}

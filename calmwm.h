@@ -246,6 +246,12 @@ struct autostartcmd {
 };
 TAILQ_HEAD(autostartcmd_q, autostartcmd);
 
+struct tabstop {
+	TAILQ_ENTRY(tabstop)		 entry;
+	int				 pos;
+};
+TAILQ_HEAD(tabstop_q, tabstop);
+
 struct region_ctx {
 	TAILQ_ENTRY(region_ctx)	 entry;
 	int			 num;
@@ -311,6 +317,12 @@ struct conf {
 	struct mousebinding_q	 mousebindingq;
 	struct autogroupwin_q	 autogroupq;
 	struct autostartcmd_q	 autostartq;
+	struct tabstop_q	 tabstop_l_q;
+	struct tabstop_q	 tabstop_c_q;
+	struct tabstop_q	 tabstop_r_q;
+	struct tabstop_q	 tabstop_t_q;
+	struct tabstop_q	 tabstop_m_q;
+	struct tabstop_q	 tabstop_b_q;
 	struct ignore_q		 ignoreq;
 	struct cmd_q		 cmdq;
 #define	CONF_STICKY_GROUPS		0x0001
@@ -538,6 +550,7 @@ int			 parse_config(const char *, struct conf *);
 void			 conf_atoms(void);
 void			 conf_autogroup(struct conf *, int, const char *);
 void			 conf_autostart(struct conf *, char *, int);
+int			 conf_tabstop(struct conf *, char *, int);
 int			 conf_bind_kbd(struct conf *, const char *,
     			     const char *);
 int			 conf_bind_mouse(struct conf *, const char *,
