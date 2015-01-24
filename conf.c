@@ -18,12 +18,13 @@
  * $OpenBSD$
  */
 
-#include <sys/param.h>
+#include <sys/types.h>
 #include "queue.h"
 #include <sys/stat.h>
 
 #include <err.h>
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -129,7 +130,7 @@ conf_ignore(struct conf *c, const char *name)
 {
 	struct winname	*wn;
 
-	wn = xcalloc(1, sizeof(*wn));
+	wn = xmalloc(sizeof(*wn));
 	wn->name = xstrdup(name);
 	TAILQ_INSERT_TAIL(&c->ignoreq, wn, entry);
 }
